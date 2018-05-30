@@ -20,6 +20,7 @@ import moment from "moment";
 //#endregion
 
 //#region App
+
 /*
 The top level app definition
 */
@@ -29,37 +30,77 @@ type AppState = {
   isLoading: boolean;
   lastUpdated: number;
 };
+type InitializationAction = {
+  type: "INITIALIZATION";
+};
+type LoadBeganAction = {
+  type: "LOAD_BEGAN";
+};
+type LoadComplete = {
+  type: "LOAD_COMPLETE";
+  lastUpdated: number;
+  upcomingWeather: any;
+};
+type Action = InitializationAction | LoadBeganAction | LoadComplete;
+const defaultAppState: AppState = {
+  upcomingWeather: null,
+  isLoading: false,
+  lastUpdated: 0
+};
+
+function nextState(
+  currentState: AppState | undefined = defaultAppState,
+  action: Action
+): AppState {
+  if (action.type == "LOAD_BEGAN") {
+    return {
+      ...currentState,
+      isLoading: true
+    };
+  } else if (action.type == "LOAD_COMPLETE") {
+    return {
+      ...currentState,
+      isLoading: false,
+      upcomingWeather: action.upcomingWeather,
+      lastUpdated: action.lastUpdated
+    };
+  }
+  return currentState;
+}
 export default class App extends Component<AppProps, AppState> {
   constructor(props: AppProps) {
     super(props);
-    this.state = {
-      upcomingWeather: null,
-      isLoading: false,
-      lastUpdated: 0
-    };
+    this.state = nextState(undefined, {
+      type: "INITIALIZATION"
+    });
   }
   async componentDidMount() {
     this.onRequestUpdatedData();
   }
 
   onRequestUpdatedData = async () => {
-    this.setState({
-      isLoading: true
-    });
+    this.setState(
+      nextState(this.state, {
+        type: "LOAD_BEGAN"
+      })
+    );
     const weather = await fetchWeather();
-    this.setState({
-      upcomingWeather: weather["daily"].data
-        .sort((a: any, b: any) => a["time"] - b["time"])
-        .slice(0, 4)
-        .map((day: any) => ({
-          highTemperature: day["temperatureLow"],
-          lowTemperature: day["temperatureHigh"],
-          date: day["time"],
-          icon: day["icon"]
-        })),
-      isLoading: false,
-      lastUpdated: new Date().getTime()
-    });
+    const upcomingWeather = weather["daily"].data
+      .sort((a: any, b: any) => a["time"] - b["time"])
+      .slice(0, 4)
+      .map((day: any) => ({
+        highTemperature: day["temperatureLow"],
+        lowTemperature: day["temperatureHigh"],
+        date: day["time"],
+        icon: day["icon"]
+      }));
+    this.setState(
+      nextState(this.state, {
+        type: "LOAD_COMPLETE",
+        upcomingWeather: upcomingWeather,
+        lastUpdated: new Date().getTime()
+      })
+    );
   };
 
   render() {
