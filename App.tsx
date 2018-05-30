@@ -17,6 +17,9 @@ import {
   Animated
 } from "react-native";
 import moment from "moment";
+
+import { createStore } from "redux";
+
 //#endregion
 
 //#region App
@@ -67,23 +70,26 @@ function nextState(
   }
   return currentState;
 }
+
+const store = createStore(nextState);
+
 export default class App extends Component<AppProps, AppState> {
   constructor(props: AppProps) {
     super(props);
     this.state = nextState(undefined, {
       type: "INITIALIZATION"
     });
+
+    store.subscribe(() => this.forceUpdate());
   }
   async componentDidMount() {
     this.onRequestUpdatedData();
   }
 
   onRequestUpdatedData = async () => {
-    this.setState(
-      nextState(this.state, {
-        type: "LOAD_BEGAN"
-      })
-    );
+    store.dispatch({
+      type: "LOAD_BEGAN"
+    });
     const weather = await fetchWeather();
     const upcomingWeather = weather["daily"].data
       .sort((a: any, b: any) => a["time"] - b["time"])
@@ -94,27 +100,27 @@ export default class App extends Component<AppProps, AppState> {
         date: day["time"],
         icon: day["icon"]
       }));
-    this.setState(
-      nextState(this.state, {
-        type: "LOAD_COMPLETE",
-        upcomingWeather: upcomingWeather,
-        lastUpdated: new Date().getTime()
-      })
-    );
+    store.dispatch({
+      type: "LOAD_COMPLETE",
+      upcomingWeather: upcomingWeather,
+      lastUpdated: new Date().getTime()
+    });
   };
 
   render() {
-    const { upcomingWeather } = this.state;
+    const state = store.getState();
+
+    const { upcomingWeather } = state;
     if (upcomingWeather == null) {
       return <LoadingScene />;
     }
     return (
       <WeatherScene
-        upcomingWeather={this.state.upcomingWeather}
-        isLoading={this.state.isLoading}
+        upcomingWeather={state.upcomingWeather}
+        isLoading={state.isLoading}
         onRequestUpdatedData={this.onRequestUpdatedData}
         location="Mountain View"
-        lastUpdated={this.state.lastUpdated}
+        lastUpdated={state.lastUpdated}
       />
     );
   }
