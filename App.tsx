@@ -18,7 +18,8 @@ import {
 } from "react-native";
 import moment from "moment";
 
-import { createStore } from "redux";
+import { createStore, applyMiddleware } from "redux";
+import { composeWithDevTools } from "redux-devtools-extension";
 
 //#endregion
 
@@ -44,7 +45,11 @@ type LoadComplete = {
   lastUpdated: number;
   upcomingWeather: any;
 };
-type Action = InitializationAction | LoadBeganAction | LoadComplete;
+
+type Reset = {
+  type: "RESET";
+};
+type Action = InitializationAction | LoadBeganAction | LoadComplete | Reset;
 const defaultAppState: AppState = {
   upcomingWeather: null,
   isLoading: false,
@@ -67,11 +72,16 @@ function nextState(
       upcomingWeather: action.upcomingWeather,
       lastUpdated: action.lastUpdated
     };
+  } else if (action.type == "RESET") {
+    return defaultAppState;
   }
   return currentState;
 }
 
-const store = createStore(nextState);
+const store = createStore(
+  nextState,
+  composeWithDevTools(applyMiddleware(...[]))
+);
 
 export default class App extends Component<AppProps, AppState> {
   constructor(props: AppProps) {
